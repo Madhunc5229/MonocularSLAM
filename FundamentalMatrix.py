@@ -85,3 +85,12 @@ def getBestF(matches, iterations = 1000, thresh = 0.01):
     inliers = np.hstack((np.array(best_inliers_1)[:,:2], np.array(best_inliers_2)[:,:2]))
 
     return inliers, best_F
+
+def getE(K,F):
+    E = np.dot(K.T, np.dot(F, K))
+    U, S, V_T = np.linalg.svd(E)
+    S = np.diag(S)
+    S[2, 2] = 0
+    E = np.dot(U, np.dot(S, V_T))
+    return E
+    

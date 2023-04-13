@@ -5,7 +5,7 @@ def ORBMatcher(image1, image2, no_kpts=None, show_matches=True):
     img1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
     img2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
 
-    orb = cv2.ORB_create(no_kpts)
+    orb = cv2.ORB_create(1000)
 
     kp1, des1 = orb.detectAndCompute(img1, None)
     kp2, des2 = orb.detectAndCompute(img2, None)
@@ -14,6 +14,8 @@ def ORBMatcher(image1, image2, no_kpts=None, show_matches=True):
     final_matches = matcher.match(des1, des2, None)
 
     final_matches = sorted(final_matches, key = lambda x:x.distance)
+
+    final_matches = final_matches[:no_kpts]
 
     matches = list()
 
@@ -26,7 +28,7 @@ def ORBMatcher(image1, image2, no_kpts=None, show_matches=True):
 
     if show_matches:
         fram = cv2.drawMatches(image1, kp1, image2, kp2, final_matches, None)
-        cv2.imshow('frame', fram)
+        cv2.imshow('Feature Matching', fram)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
