@@ -93,4 +93,84 @@ def getE(K,F):
     S[2, 2] = 0
     E = np.dot(U, np.dot(S, V_T))
     return E
+
+def extractCameraPose(E):
+    U, _, Vt = np.linalg.svd(E)
+    W = np.array([[0,-1,0],[1,0,0],[0,0,1]])
+    C= list()
+    R= list()
+    C.append(U[:,2])
+    C.append(-U[:,2])
+    C.append(U[:,2])
+    C.append(-U[:,2])
+
+    R.append(np.dot(U, np.dot(W,Vt)))
+    R.append(np.dot(U, np.dot(W,Vt)))
+    R.append(np.dot(U, np.dot(W.T,Vt)))
+    R.append(np.dot(U, np.dot(W.T,Vt)))
     
+    for i in range(4):
+        if(np.linalg.det(R[i])<0):
+            C[i] = -C[i]
+            R[i] = -R[i]
+
+    return R, C
+
+
+def triangulatePts(R,t,K,inliers):
+
+    I_3 = np.identity(3)
+    R1 = np.identity(3)
+    C1 = np.zeros((3,1))
+
+    P1 = np.dot(K, np.dot(R1, np.hstack((I_3, -C1))))
+    
+    trinagluated_3d_pts = list()
+    for i in range(len(R)):
+        x1 = inliers[:,:2]
+        x2 = inliers[:,2:]
+
+        P2 = np.dot(K, np.dot(R[i], np.hstack((I_3, -t[i].reshape(3,1)))))
+
+        triangulated_pts = cv2.triangulatePoints(P1, P2, x1.T, x2.T)
+
+        trinagluated_3d_pts.append(triangulated_pts)
+    
+    return trinagluated_3d_pts
+
+
+def positive_zCount(points, R1, C1):
+
+    points = points.T[:,:-1]
+    points_translated = points-C1.T
+    r3 = R1[-1,:]
+    z = np.dot(r3, points_translated.T)
+    z_count = np.where(z>0)[0].size
+
+    return z_count
+
+
+def cheirality_check(points_3d, R, t):
+    R1 = np.identity(3)
+    C1 = np.zeros((3,1))
+    positive_zc_1=[]
+    positive_zc_2=[]
+    for idx in range(len(points_3d)):
+        points = points_3d[idx]
+        points = points/points[3,:]
+        z1 = positive_zCount(points, R1, C1)
+        z2 = positive_zCount(points, R[idx], t[idx])
+
+        positive_zc_1.append(z1)
+        positive_zc_2.append(z2)
+
+    positive_zc_1 = np.array(positive_zc_1)
+    positive_zc_2 = np.array(positive_zc_2)
+    threshold_points = int(points_3d[0].shape[1]//2)
+
+    pose_idx = np.intersect1d(np.where(positive_zc_1>threshold_points), np.where(positive_zc_2>threshold_points))[0]
+
+    R2 = R[pose_idx]
+    C2 = t[pose_idx]
+
+    return pose_idx, R2, C2
